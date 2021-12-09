@@ -1,0 +1,37 @@
+
+import sqlite3
+import uvicorn
+
+
+# We need to import the Request object as well, as this manages the payload of the API call:
+from fastapi import FastAPI, Request
+
+app = FastAPI()
+
+@app.post("/ActiveSubscription")
+async def Active_subscription(payload: Request):
+    values_dict = await payload.json()
+    # Open the DB
+    dbase = sqlite3.connect('API_database', isolation_level=None)
+
+    Quote_query = dbase.execute(''' 
+            SELECT Accepted FROM Quote
+            WHERE Quote_id = {}
+            '''.format(str(values_dict['Quote_id'])))
+
+    Accepted = Quote_query.fetchall()[0][1]
+   
+    if Accepted == 0:
+        return 'Quote not accepted'
+    active_subscription = dbase.execute ('''
+                        UPDATE Subscription
+                        SET Active = 1 
+                        WHERE Client_id = {Client_id}
+                        AND Quote_id = {Quote_id}
+                        AND VAT_id = {Vat_id}
+                        '''.format(Client_id = values_dict['Client_id'], Quote_id = values_dict['Quote_id'], VAT_id = values_dict['VAT_id'])) 
+
+    dbase.close()
+    return active_subscription
+if __name__ == '__main__':
+    uvicorn.run(app, host='127.0.0.1', port=8000)
